@@ -296,7 +296,7 @@
 
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(function() { controller.abort(); }, 3500);
+          const timeoutId = setTimeout(function() { controller.abort(); }, 6000);
           const response = await fetch(SAVE_API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

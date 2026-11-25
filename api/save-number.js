@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
@@ -35,7 +35,9 @@ export default async function handler(req, res) {
   const chatId = process.env.TELEGRAM_CHAT_ID;
 
   let telegramSent = false;
-  if (token && chatId) {
+  if (!token || !chatId) {
+    console.error('Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID');
+  } else {
     const text = [
       '📱 New Mobile Number Submitted',
       `Number: ${fullNumber}`,
@@ -54,10 +56,14 @@ export default async function handler(req, res) {
         })
       });
       telegramSent = tgRes.ok;
-    } catch {
+      if (!tgRes.ok) {
+        console.error('Telegram API error:', tgRes.status, await tgRes.text());
+      }
+    } catch (err) {
+      console.error('Telegram fetch failed:', err);
       telegramSent = false;
     }
   }
 
   return res.status(201).json({ ok: true, telegramSent });
-}
+};
