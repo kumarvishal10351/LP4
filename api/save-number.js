@@ -1,17 +1,53 @@
+async function readBody(req) {
+  if (req.body !== undefined && req.body !== null) {
+    if (Buffer.isBuffer(req.body)) {
+      return JSON.parse(req.body.toString('utf8') || '{}');
+    }
+    if (typeof req.body === 'string') {
+      return JSON.parse(req.body || '{}');
+    }
+    if (typeof req.body === 'object') {
+      return req.body;
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => {
+      try {
+        const raw = Buffer.concat(chunks).toString('utf8');
+        resolve(raw ? JSON.parse(raw) : {});
+      } catch (err) {
+        reject(err);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
 module.exports = async function handler(req, res) {
+  const token = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
+  const chatId = (process.env.TELEGRAM_CHAT_ID || '').trim();
+
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      ok: true,
+      hasToken: Boolean(token),
+      hasChatId: Boolean(chatId)
+    });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
 
-  let body = req.body;
-  if (typeof body === 'string') {
-    try {
-      body = JSON.parse(body);
-    } catch {
-      return res.status(400).json({ ok: false, error: 'Invalid JSON' });
-    }
+  let body;
+  try {
+    body = await readBody(req);
+  } catch {
+    return res.status(400).json({ ok: false, error: 'Invalid JSON' });
   }
-  body = body || {};
 
   const countryCode = String(body.countryCode || '+91').trim().slice(0, 8);
   const number = String(body.number || '').replace(/\D/g, '');
@@ -31,12 +67,12 @@ module.exports = async function handler(req, res) {
     : (req.socket && req.socket.remoteAddress) || 'unknown';
   const country = req.headers['x-vercel-ip-country'] || '';
 
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-
   let telegramSent = false;
+  let telegramError = null;
+
   if (!token || !chatId) {
-    console.error('Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID');
+    telegramError = 'Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID';
+    console.error(telegramError);
   } else {
     const text = [
       '📱 New Mobile Number Submitted',
@@ -57,13 +93,15 @@ module.exports = async function handler(req, res) {
       });
       telegramSent = tgRes.ok;
       if (!tgRes.ok) {
-        console.error('Telegram API error:', tgRes.status, await tgRes.text());
+        telegramError = await tgRes.text();
+        console.error('Telegram API error:', tgRes.status, telegramError);
       }
     } catch (err) {
+      telegramError = err.message;
       console.error('Telegram fetch failed:', err);
       telegramSent = false;
     }
   }
 
-  return res.status(201).json({ ok: true, telegramSent });
+  return res.status(201).json({ ok: true, telegramSent, telegramError });
 };
