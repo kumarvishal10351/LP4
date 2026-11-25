@@ -82,24 +82,31 @@ module.exports = async function handler(req, res) {
       `IP: ${ip}${country ? ` (${country})` : ''}`
     ].join('\n');
 
-    try {
-      const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text
-        })
-      });
-      telegramSent = tgRes.ok;
-      if (!tgRes.ok) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text
+          })
+        });
+        telegramSent = tgRes.ok;
+        if (tgRes.ok) {
+          telegramError = null;
+          break;
+        }
         telegramError = await tgRes.text();
-        console.error('Telegram API error:', tgRes.status, telegramError);
+        console.error(`Telegram API error (attempt ${attempt}):`, tgRes.status, telegramError);
+      } catch (err) {
+        telegramError = err.message;
+        console.error(`Telegram fetch failed (attempt ${attempt}):`, err);
+        telegramSent = false;
       }
-    } catch (err) {
-      telegramError = err.message;
-      console.error('Telegram fetch failed:', err);
-      telegramSent = false;
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 300));
+      }
     }
   }
 

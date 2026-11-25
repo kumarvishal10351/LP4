@@ -312,22 +312,24 @@
 
         saveToLocalBackup(payload);
 
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(function() { controller.abort(); }, 6000);
-          const response = await fetch(SAVE_API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          return response.ok;
-        } catch (err) {
-          // If opened without backend server, localStorage still keeps the number
-          console.warn('Backend save unavailable, saved to localStorage:', err);
-          return false;
+        for (var attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(function() { controller.abort(); }, 10000);
+            const response = await fetch(SAVE_API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+              keepalive: true,
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (response.ok) return true;
+          } catch (err) {
+            console.warn('Backend save attempt ' + attempt + ' failed:', err);
+          }
         }
+        return false;
       }
 
       // Master audio unlock function
