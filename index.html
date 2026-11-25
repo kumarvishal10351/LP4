@@ -96,52 +96,7 @@
   </div>
 
   <!-- ======================================================================
-       1. TIMER SCREEN (1.5-SECOND COUNTDOWN)
-       Displays photo, bold heading, 1.5s countdown, and disclaimer.
-       Starts after user submits mobile number.
-       ====================================================================== -->
-  <div id="timerScreen" class="timer-screen screen-hidden" role="status" aria-live="polite">
-    <div class="timer-card" id="timerCard">
-      <div class="timer-avatar-container">
-        <img 
-          src="assets/profile.jpg" 
-          alt="BITTU BHAI" 
-          class="timer-avatar" 
-          width="74" 
-          height="74"
-          loading="eager"
-        >
-        <svg class="timer-svg" viewBox="0 0 100 100" aria-hidden="true">
-          <circle class="timer-svg-bg" cx="50" cy="50" r="44"></circle>
-          <circle id="timerSvgCircle" class="timer-svg-bar" cx="50" cy="50" r="44"></circle>
-        </svg>
-      </div>
-
-      <!-- Bold Text -->
-      <h2 class="timer-bold-title">JOIN OUR PROFITABLE CHANNEL NOW</h2>
-
-      <!-- Countdown Box -->
-      <div class="timer-countdown-box">
-        <span id="countdownNumber" class="countdown-digit">1</span>
-      </div>
-
-      <p class="timer-subtext">Opening page in <span id="timerSecondsText">1.5</span> seconds...</p>
-
-      <div class="timer-progress-track">
-        <div id="timerProgressBar" class="timer-progress-fill"></div>
-      </div>
-
-      <!-- Small Disclaimer Text -->
-      <p class="timer-disclaimer">It's only for entainment purpose I will not engage in any financial losses.</p>
-
-      <button id="skipTimerBtn" class="timer-skip-btn" type="button" aria-label="Skip timer and open immediately">
-        Skip &rarr;
-      </button>
-    </div>
-  </div>
-
-  <!-- ======================================================================
-       2. FULLSCREEN VIDEO SCREEN (COVERS ENTIRE SCREEN AFTER TIMER)
+       1. FULLSCREEN VIDEO SCREEN (COVERS ENTIRE SCREEN AFTER GATE)
        Plays automatically with sound enabled. Overlaid with Telegram CTA & channel info.
        ====================================================================== -->
   <main id="videoScreen" class="fullscreen-video-container video-screen-hidden">
@@ -214,7 +169,6 @@
        5. Direct navigation on JOIN CHANNEL button
        ====================================================================== -->
   <script>
-    const COUNTDOWN_SECONDS = 1.5;
     const TELEGRAM_URL = 'https://t.me/+2apBHiqp4hthOTJl';
     const SAVE_API_URL = '/api/save-number';
 
@@ -227,26 +181,13 @@
       const gateError = document.getElementById('gateError');
       const proceedBtn = document.getElementById('proceedBtn');
 
-      const timerScreen = document.getElementById('timerScreen');
       const videoScreen = document.getElementById('videoScreen');
       const promoVideo = document.getElementById('promoVideo');
       const videoTapOverlay = document.getElementById('videoTapOverlay');
       const soundIndicator = document.getElementById('soundIndicator');
-      const countdownNumber = document.getElementById('countdownNumber');
-      const timerSecondsText = document.getElementById('timerSecondsText');
-      const timerProgressBar = document.getElementById('timerProgressBar');
-      const timerSvgCircle = document.getElementById('timerSvgCircle');
-      const skipBtn = document.getElementById('skipTimerBtn');
 
       let hasOpened = false;
-      let timerStarted = false;
       let audioUnlocked = false;
-      const circumference = 2 * Math.PI * 44;
-
-      if (timerSvgCircle) {
-        timerSvgCircle.style.strokeDasharray = circumference;
-        timerSvgCircle.style.strokeDashoffset = '0';
-      }
 
       // Clean input to digits only as user types
       if (mobileInput) {
@@ -411,70 +352,12 @@
         if (hasOpened) return;
         hasOpened = true;
 
-        if (timerScreen) {
-          timerScreen.classList.add('fade-out');
-          setTimeout(function() {
-            timerScreen.style.display = 'none';
-          }, 350);
-        }
-
         if (videoScreen) {
           videoScreen.classList.remove('video-screen-hidden');
           videoScreen.classList.add('video-screen-visible');
         }
 
         startVideo();
-      }
-
-      function startCountdownSequence() {
-        if (timerStarted) return;
-        timerStarted = true;
-
-        if (timerScreen) {
-          timerScreen.classList.remove('screen-hidden');
-        }
-
-        // Start circular SVG ring and progress bar animations for 1.5 seconds
-        requestAnimationFrame(function() {
-          if (timerProgressBar) {
-            timerProgressBar.style.transition = 'width ' + COUNTDOWN_SECONDS + 's linear';
-            timerProgressBar.style.width = '100%';
-          }
-
-          if (timerSvgCircle) {
-            timerSvgCircle.style.transition = 'stroke-dashoffset ' + COUNTDOWN_SECONDS + 's linear';
-            timerSvgCircle.style.strokeDashoffset = circumference;
-          }
-        });
-
-        // 1.5-second countdown logic
-        const startTime = Date.now();
-        const durationMs = COUNTDOWN_SECONDS * 1000;
-
-        const interval = setInterval(function() {
-          const elapsed = Date.now() - startTime;
-          const leftSec = Math.max(0, (durationMs - elapsed) / 1000);
-
-          if (leftSec > 0.05) {
-            if (countdownNumber) {
-              const displayVal = Math.ceil(leftSec);
-              if (countdownNumber.textContent !== String(displayVal)) {
-                countdownNumber.textContent = displayVal;
-                countdownNumber.classList.remove('pulse');
-                void countdownNumber.offsetWidth;
-                countdownNumber.classList.add('pulse');
-              }
-            }
-            if (timerSecondsText) {
-              timerSecondsText.textContent = leftSec.toFixed(1);
-            }
-          } else {
-            clearInterval(interval);
-            if (countdownNumber) countdownNumber.textContent = '0';
-            if (timerSecondsText) timerSecondsText.textContent = '0';
-            openFullscreenVideo();
-          }
-        }, 100);
       }
 
       // Handle mobile gate form submission
@@ -508,23 +391,7 @@
             }, 350);
           }
 
-          startCountdownSequence();
-        });
-      }
-
-      // Allow skip button to trigger video immediately with sound
-      if (skipBtn) {
-        skipBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          enableAudioPlayback();
           openFullscreenVideo();
-        });
-      }
-
-      // Tapping anywhere on the timer screen also unlocks audio
-      if (timerScreen) {
-        timerScreen.addEventListener('click', function() {
-          enableAudioPlayback();
         });
       }
     })();
